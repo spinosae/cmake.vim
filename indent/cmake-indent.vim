@@ -25,6 +25,7 @@ endif
 let b:did_indent = 1
 
 setlocal indentexpr=CMakeGetIndent(v:lnum)
+let enter_subcommand = 0
 
 " Only define the function once.
 if exists("*CMakeGetIndent")
@@ -67,6 +68,9 @@ fun! CMakeGetIndent(lnum)
 
   let cmake_indent_begin_regex = '^\s*\(IF\|MACRO\|FOREACH\|ELSE\)\s*('
   let cmake_indent_end_regex = '^\s*\(ENDIF\|ENDFOREACH\|ENDMACRO\|ELSE\)\s*('
+  let cmake_indent_command_regex = '^\s*[A-Za-z]*_COMMAND'
+  let cmake_indent_subcommand_regex = '^\s*COMMAND'
+  
 
   " Add
   if previous_line =~? cmake_indent_comment_line " Handle comments
@@ -78,14 +82,22 @@ fun! CMakeGetIndent(lnum)
     if previous_line =~? cmake_indent_open_regex
       let ind = ind + &sw
     endif
+    if previous_line =~? cmake_indent_command_regex && this_line =~ cmake_indent_subcommand_regex
+      let ind = ind + &sw
+      let enter_subcommand = 1
+    endif
   endif
 
   " Subtract
-  if this_line =~? cmake_indent_end_regex
+  if prefix_line =~? cmake_indent_end_regex
     let ind = ind - &sw
   endif
-  if previous_line =~? cmake_indent_close_regex
+  if this_line =~? cmake_indent_close_regex
     let ind = ind - &sw
+  endif
+  if previous_line =~? cmake_indent_subcommand_regex && this_line !~? cmake_indent_subcommand_regex && enter_subcommand
+      let ind = ind - &sw
+      let enter_subcommand = 0
   endif
 
   return ind
